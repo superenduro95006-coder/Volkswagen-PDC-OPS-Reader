@@ -106,3 +106,6 @@ The data in the 03 packet is a sequence of bit flags with each flag indicating w
 38035B00... = 02 03 04 0E 0F 11 13 14 16 17
 Note that for some reason some packet IDs are supplied (12, 13 & 18) but just skipped by the firmware. Instead the firmware waits for the basic packet format of these IDs to provide the data.
 
+
+
+Source: https://www.ttforum.co.uk/threads/rns-e-firmware-now-including-32gb-sdhc-support-for-192.2003957/page-3?nested_view=1
