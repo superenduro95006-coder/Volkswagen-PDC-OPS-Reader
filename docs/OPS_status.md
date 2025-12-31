@@ -78,17 +78,42 @@ Das reicht, um sehr schnell zu sehen: ist das System “aktiv hinten”, “akti
 
 **2) 0x6DA: “BAP_Data_OPS”**
 
-Dein DBC zeigt BAP_Data_OPS : 0|16 – das ist oft nur eine “Sammeldefinition” (z. B. BAP Header/Service), aber praktisch ist klar:
-
-0x6DA ist der 8-Byte BAP-Transport für OPS
-
-Bei dir sind die Subframes:
-
 ```
-0x32 0x92 → Front distances (Byte2..5)
-
-0x32 0x93 → Rear distances (Byte2..5)
+für das 0x6DA Byte mapping habe ich folgendes gefunden: Function         Example
+            02 82 03 00 0a 00 03 00
+            32 82 03 00 0a 00 03 00
+versionControlStatus      32 83 38 03 fb 40 00 00
+            32 84 0a
+fSG_SetupStatus         32 8e 0f 03 03
+fSG_OperationStateStatu      32 8f 00
+Sound front         32 90 06 04
+Sound rear         32 91 04 04
+Distance front         32 92 ff ff ff ff
+Distance rear         32 93 ff ff ff ff
+Presentation control      32 94 00 00
+OpsDisplayStatusEvent      32 96 00
+Default parking mode?      32 97 01
+?            32 99 00
+Trailer            32 98 00
+APS mute         32 95 00
 ```
 
-plus 0x94/0x96/… Status/Presentation/Trailer usw.
+
+| Block | Bedeutung                       |
+| ----: | ------------------------------- |
+|  0x82 | unknown / base status           |
+|  0x83 | versionControlStatus            |
+|  0x84 | unknown                         |
+|  0x8E | fSG_SetupStatus                 |
+|  0x8F | fSG_OperationStateStatus        |
+|  0x90 | Sound front                     |
+|  0x91 | Sound rear                      |
+|  0x92 | **Distance front (4 Sensoren)** |
+|  0x93 | **Distance rear (4 Sensoren)**  |
+|  0x94 | Presentation control            |
+|  0x95 | APS mute                        |
+|  0x96 | OPS Display Status Event        |
+|  0x97 | Default parking mode            |
+|  0x98 | **Trailer status**              |
+|  0x99 | unknown                         |
 
