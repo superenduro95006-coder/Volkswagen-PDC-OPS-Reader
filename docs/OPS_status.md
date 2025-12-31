@@ -1,0 +1,94 @@
+```
+ich habe hier noch etwas gefunden: 0x497
+BO_ 1175
+SG_ PH_Abschaltursache : 13|3@1+ (1,0) [0|7] "" Rearview
+SG_ PH_Opt_Anzeige_V_ein : 16|1@1+ (1,0) [0|1] "" Rearview
+SG_ PH_Opt_Anzeige_H_ein : 17|1@1+ (1,0) [0|1] "" Rearview
+SG_ PH_Opt_Anz_V_Hindernis : 18|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_Opt_Anz_H_Hindernis : 19|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_Tongeber_V_aktiv : 20|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_Tongeber_H_aktiv : 21|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_Tongeber_mute : 22|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_Anf_Audioabsenkung : 23|1@1+ (1,0) [0|1] "" Radio_Modul,RNS_300_NF,RNS_midline
+SG_ PH_Frequenz_hinten : 32|4@1+ (1,0) [0|15] "" Vector__XXX
+SG_ PH_Lautstaerke_hinten : 36|4@1+ (1,0) [0|15] "" Vector__XXX
+SG_ PH_Frequenz_vorn : 40|4@1+ (1,0) [0|15] "" Vector__XXX
+SG_ PH_Lautstaerke_vorn : 44|4@1+ (1,0) [0|15] "" Vector__XXX
+SG_ PH_Trigger_Bildaufschaltung : 48|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_StartStopp_Info : 49|2@1+ (1,0) [0|3] "" Vector__XXX
+SG_ PH_Aufbauten_erk : 51|1@1+ (1,0) [0|1] "" Vector__XXX
+SG_ PH_BerErk_vorn : 52|2@1+ (1,0) [0|3] "" Vector__XXX
+SG_ PH_BerErk_hinten : 54|2@1+ (1,0) [0|3] "" Verdeck
+SG_ PH_defekt : 56|1@1+ (1,0) [0|1] "" Verdeck
+SG_ PH_gestoert : 57|1@1+ (1,0) [0|1] "" Verdeck
+SG_ PH_Systemzustand : 58|3@1+ (1,0) [0|7] "" AAG,Rearview,RNS_midline
+SG_ PH_Display_Kundenwunsch : 61|2@1+ (1,0) [0|3] "" Vector__XXX
+SG_ PH_KD_Fehler : 63|1@1+ (1,0) [0|1] "" Vector__XXX
+
+0x6DA
+BO_ 1754
+SG_ BAP_Data_OPS : 0|16@1+ (1,0) [0|65535] "" Radio_Modul,RNS_300_NF,RNS_midline
+```
+
+**1) 0x497: Bit-/Byte-Mapping aus deinem DBC (Intel / little endian)**
+
+Dein DBC sagt @1 → Intel. Dann gilt:
+
+Byte = Startbit / 8
+
+Bit im Byte = Startbit % 8 (LSB=Bit0)
+
+Hier die wichtigsten Signale in Byte/Bit:
+
+```
+Aktiv/Anzeige/Audio (die du wirklich sehen willst)
+
+PH_Opt_Anzeige_V_ein Startbit 16, Len1 → Byte2 Bit0
+
+PH_Opt_Anzeige_H_ein Startbit 17, Len1 → Byte2 Bit1
+
+PH_Tongeber_V_aktiv Startbit 20, Len1 → Byte2 Bit4
+
+PH_Tongeber_H_aktiv Startbit 21, Len1 → Byte2 Bit5
+
+PH_Tongeber_mute Startbit 22, Len1 → Byte2 Bit6
+
+PH_Trigger_Bildaufschaltung Startbit 48, Len1 → Byte6 Bit0
+
+PH_Systemzustand Startbit 58, Len3 → Byte7 Bits2..4
+
+PH_defekt Startbit 56, Len1 → Byte7 Bit0
+
+PH_gestoert Startbit 57, Len1 → Byte7 Bit1
+
+PH_Abschaltursache Startbit 13, Len3 → Byte1 Bits5..7
+
+Sound-Parameter (Nibbles)
+
+PH_Frequenz_hinten Startbit 32, Len4 → Byte4 low nibble (Bits0..3)
+
+PH_Lautstaerke_hinten Startbit 36, Len4 → Byte4 high nibble (Bits4..7)
+
+PH_Frequenz_vorn Startbit 40, Len4 → Byte5 low nibble
+
+PH_Lautstaerke_vorn Startbit 44, Len4 → Byte5 high nibble
+```
+
+Das reicht, um sehr schnell zu sehen: ist das System “aktiv hinten”, “aktiv vorne”, will es Bildaufschaltung, ist es gestört/defekt.
+
+**2) 0x6DA: “BAP_Data_OPS”**
+
+Dein DBC zeigt BAP_Data_OPS : 0|16 – das ist oft nur eine “Sammeldefinition” (z. B. BAP Header/Service), aber praktisch ist klar:
+
+0x6DA ist der 8-Byte BAP-Transport für OPS
+
+Bei dir sind die Subframes:
+
+```
+0x32 0x92 → Front distances (Byte2..5)
+
+0x32 0x93 → Rear distances (Byte2..5)
+```
+
+plus 0x94/0x96/… Status/Presentation/Trailer usw.
+
