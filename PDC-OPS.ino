@@ -1,3 +1,5 @@
+// DBC File https://github.com/commaai/opendbc/blob/master/opendbc/dbc/vw_pq.dbc
+
 #include <SPI.h>
 #include <mcp_can.h>
 
@@ -48,7 +50,7 @@ RevPhase phase = PHASE_IDLE_0;
 uint32_t phase_start = 0;
 bool frame_sent_in_phase = false;
 
-static const uint32_t PHASE_TIME_MS = 200;
+static const uint32_t PHASE_TIME_MS = 15;
 
 // ---------------- Interrupt ----------------
 volatile bool can_irq = false;
@@ -110,38 +112,89 @@ void loop() {
   // -------- Phasenwechsel --------
   if (now - phase_start >= PHASE_TIME_MS) {
     phase_start = now;
-    //Serial.println("PHASE: TEST 0x351");
-    sendFrame(ID_351, 8, rev_351);
-    delay (5);
-
-    byte rev_351[8] = {0x02, 0, 0, 0, 0, 0, 0, 0};   // VW Polo: Byte0=0x02 => R
-    CAN.sendMsgBuf(0x351, 0, 8, rev_351);
-
-  // Optional: Reverse Light zusätzlich (wenn dein Setup das nutzt)
-     byte revLight_390[8] = {0,0,0,0x10,0,0,0,0};  // Byte3 Bit4
-     CAN.sendMsgBuf(0x390, 0, 8, revLight_390);
-
-     byte revLight_48A[8] = {0,0,0,0x10,0,0,0,0};  // Byte3 Bit4
-     CAN.sendMsgBuf(0x48A, 0, 8, revLight_48A);
-
-    // ==========================================
-    // Trailer OFF (Kandidaten – alle "0" = OFF)
-    // Teste später jeweils EINEN Block, nicht alle
-    // ==========================================
-
-    // ---- Kandidat B1: 0x3C0 (Zustands-Sammelrahmen)
-     byte trailerOff_3C0[8] = {0,0,0,0,0,0,0,0};
-     CAN.sendMsgBuf(0x3C0, 0, 8, trailerOff_3C0);
-
-    // ---- Kandidat B2: 0x371 (Komfortstatus, je nach Plattform)
-     byte trailerOff_371[8] = {0,0,0,0,0,0,0,0};
-     CAN.sendMsgBuf(0x371, 0, 8, trailerOff_371);
-
-    // ---- Kandidat B3: 0x5A0 (Beispiel aus "Body/Trailer"-Bereich – nur als Kandidat)
-     byte trailerOff_5A0[8] = {0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10};
-     CAN.sendMsgBuf(0x65A, 0, 8, trailerOff_5A0);
     
-    sendFrame(ID_REQ, 2, req_1293);
+       // =========================
+    // Reverse eingelegt
+    // =========================
+    byte msg_351[8] = {0x02,0x0,0,0,0,0,0,0};
+    CAN.sendMsgBuf(0x351, 0, 7, msg_351);
+
+    uint16_t raw = 1200 * 4;   // 0.25 rpm/bit
+
+  byte msg_280[8] = {0};
+
+  // Motordrehzahl liegt auf Byte2..Byte3
+  msg_280[2] = (byte)(raw & 0xFF);        // LSB
+  msg_280[3] = (byte)((raw >> 8) & 0xFF); // MSB
+
+  // Optional: Leergasinformation (Bit0) setzen, wenn rpm ~ Idle
+  // msg_280[0] |= 0x01;
+
+  CAN.sendMsgBuf(0x280, 0, 8, msg_280);
+
+    // =========================
+    // Zündung / KL15 EIN
+    // =========================
+    byte msg_271[8] = {0x1,0,0,0,0,0,0,0};
+    //CAN.sendMsgBuf(0x271, 0, 8, msg_271);
+
+    // =========================
+    // PDC aktiv (Taste / Enable)
+    // =========================
+    byte msg_3B0[8] = {0x01,0x00,0x80,0x00,0x00,0x00,0x00,0x00};
+    CAN.sendMsgBuf(0x3B0, 0, 8, msg_3B0);
+
+    // =========================
+    // Rückfahrlicht (optional)
+    // =========================
+    //byte msg_390[8] = {0,0,0,0x16,0,0,0,0};
+    //CAN.sendMsgBuf(0x390, 0, 8, msg_390);
+
+// Getriebe_1 (0x440): Zielgang=1 (R) und Wahl_Pos=1 (R)
+byte msg_440[8] = {0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+CAN.sendMsgBuf(0x440, 0, 8, msg_440);
+    
+    static uint8_t gk_counter = 0;
+
+byte msg_390[8] = {0};
+
+msg_390[0] = 0x00;          // Kein Anhänger
+msg_390[2] = 0x02;          // GK1_RueckfahrSch = 1 (Bit1)
+msg_390[3] = 0x10;          // GK1_Rueckfahr = 1 (Bit4)
+msg_390[5] = (gk_counter & 0x0F);  // GK1_Count_Anhaen
+gk_counter++;
+
+CAN.sendMsgBuf(0x390, 0, 8, msg_390);
+
+byte msg_572[8] = {0};
+
+/* Klemme 15 Varianten */
+
+
+// SG_ Klemme_15__Z_ndung_ein_ : 1|1@1+  -> Byte0 Bit1
+msg_572[0] |= 0x02;   // Zündung EIN
+
+// SG_ Klemme_15_SV : 6|1@1+  -> Byte0 Bit6
+msg_572[0] |= 0x40;   // Klemme 15 EIN
+
+CAN.sendMsgBuf(0x572, 0, 8, msg_572);
+
+byte msg_570[4] = {0};
+
+// ZAS_Klemme_15 : 1|1@1+  -> Byte0 Bit1
+msg_570[0] |= 0x02;   // KL15 EIN
+
+CAN.sendMsgBuf(0x570, 0, 4, msg_570);
+
+
+// PDC Active State anfordern
+    byte msg_128F[8] = {0x12,0x8F,0x01,0x01,0,0,0,0};
+    CAN.sendMsgBuf(0x67A, 0, 4, msg_128F);
+
+
+    //byte msg_128F[8] = {0x12,0x8F,0,0x10,0,0,0,0};
+    //CAN.sendMsgBuf(0x67A, 0, 2, msg_128F);
+    //sendFrame(ID_REQ, 2, req_1293);
   }
 
   // -------- RX --------
@@ -161,6 +214,188 @@ void loop() {
         sendFrame(ID_REQ, 2, req_1281);
         sent_81 = true;
       }
+
+      decodeData(rxId, buf);
+
+
     }
   }
+}
+
+static inline bool getBit(const byte* d, uint8_t byteIndex, uint8_t bitIndex) {
+  return (d[byteIndex] >> bitIndex) & 0x01;
+}
+
+static inline uint8_t getBits(const byte* d, uint8_t byteIndex, uint8_t lsbBit, uint8_t len) {
+  // len <= 8, does not cross byte boundary (hier bei Systemzustand 3 Bits innerhalb Byte7)
+  uint8_t mask = (1U << len) - 1U;
+  return (d[byteIndex] >> lsbBit) & mask;
+}
+
+static void printHex8(const byte* d) {
+  for (int i = 0; i < 8; i++) {
+    if (d[i] < 0x10) Serial.print("0");
+    Serial.print(d[i], HEX);
+    if (i < 7) Serial.print(" ");
+  }
+}
+
+void decodeData (uint32_t id, uint8_t *d){
+   
+  if (id == 0x497) {
+    bool optV = getBit(d, 2, 0);  // Startbit 16
+    bool optH = getBit(d, 2, 1);  // Startbit 17
+    bool toneV = getBit(d, 2, 4); // Startbit 20
+    bool toneH = getBit(d, 2, 5); // Startbit 21
+    bool mute  = getBit(d, 2, 6); // Startbit 22
+
+    bool trigBild = getBit(d, 6, 0); // Startbit 48
+
+    uint8_t sysZ = getBits(d, 7, 2, 3); // Startbit 58 len3 => Byte7 bits2..4
+    bool defekt   = getBit(d, 7, 0);    // 56
+    bool gestoert = getBit(d, 7, 1);    // 57
+
+    uint8_t abschalt = getBits(d, 1, 5, 3); // Startbit 13 => Byte1 bits5..7
+
+    uint8_t freqH = (d[4] & 0x0F);        // Startbit 32 len4
+    uint8_t volH  = (d[4] >> 4) & 0x0F;   // Startbit 36 len4
+    uint8_t freqV = (d[5] & 0x0F);        // Startbit 40 len4
+    uint8_t volV  = (d[5] >> 4) & 0x0F;   // Startbit 44 len4
+
+    Serial.print("0x497  RAW: "); printHex8(d);
+    Serial.print(" | OptV="); Serial.print(optV);
+    Serial.print(" OptH="); Serial.print(optH);
+    Serial.print(" ToneV="); Serial.print(toneV);
+    Serial.print(" ToneH="); Serial.print(toneH);
+    Serial.print(" Mute="); Serial.print(mute);
+    Serial.print(" Bild="); Serial.print(trigBild);
+    Serial.print(" Sys="); Serial.print(sysZ);
+    Serial.print(" Def="); Serial.print(defekt);
+    Serial.print(" Gst="); Serial.print(gestoert);
+    Serial.print(" Abschalt="); Serial.print(abschalt);
+    Serial.print(" FreqH/VolH="); Serial.print(freqH); Serial.print("/"); Serial.print(volH);
+    Serial.print(" FreqV/VolV="); Serial.print(freqV); Serial.print("/"); Serial.println(volV);
+  }
+
+  if (id == 0x6DA) {
+    handle_6DA(d);
+  }
+}
+
+void handle_6DA(const byte* d) {
+  byte header = d[0];
+  byte block  = d[1];
+
+  Serial.print("0x6DA  RAW: ");
+  printHex8(d);
+
+  Serial.print(" | Hdr=0x");
+  Serial.print(header, HEX);
+  Serial.print(" Block=0x");
+  Serial.print(block, HEX);
+  Serial.print(" -> ");
+
+  switch (block) {
+
+    case 0x82:
+      Serial.print("Base/Unknown Status");
+      break;
+
+    case 0x83:
+      Serial.print("VersionControlStatus ");
+      Serial.print("v=");
+      Serial.print(d[2], HEX);
+      Serial.print(".");
+      Serial.print(d[3], HEX);
+      break;
+
+    case 0x84:
+      Serial.print("Unknown (0x84)");
+      break;
+
+    case 0x8E:
+      Serial.print("SetupStatus ");
+      Serial.print("Flags=");
+      Serial.print(d[2], HEX);
+      Serial.print(" Mode=");
+      Serial.print(d[3], HEX);
+      break;
+
+    case 0x8F:
+      Serial.print("OperationStateStatus ");
+      Serial.print("State=");
+      Serial.print(d[2], HEX);
+      break;
+
+    case 0x90:
+      Serial.print("Sound Front ");
+      Serial.print("Freq=");
+      Serial.print(d[2]);
+      Serial.print(" Vol=");
+      Serial.print(d[3]);
+      break;
+
+    case 0x91:
+      Serial.print("Sound Rear ");
+      Serial.print("Freq=");
+      Serial.print(d[2]);
+      Serial.print(" Vol=");
+      Serial.print(d[3]);
+      break;
+
+    case 0x92:
+      Serial.print("Distance FRONT [");
+      Serial.print(d[2], HEX); Serial.print(" ");
+      Serial.print(d[3], HEX); Serial.print(" ");
+      Serial.print(d[4], HEX); Serial.print(" ");
+      Serial.print(d[5], HEX);
+      Serial.print("]");
+      break;
+
+    case 0x93:
+      Serial.print("Distance REAR  [");
+      Serial.print(d[2], HEX); Serial.print(" ");
+      Serial.print(d[3], HEX); Serial.print(" ");
+      Serial.print(d[4], HEX); Serial.print(" ");
+      Serial.print(d[5], HEX);
+      Serial.print("]");
+      break;
+
+    case 0x94:
+      Serial.print("PresentationControl ");
+      Serial.print(d[2], HEX);
+      Serial.print(" ");
+      Serial.print(d[3], HEX);
+      break;
+
+    case 0x95:
+      Serial.print("APS Mute ");
+      Serial.print(d[2] ? "ON" : "OFF");
+      break;
+
+    case 0x96:
+      Serial.print("OPS Display Status ");
+      Serial.print(d[2], HEX);
+      break;
+
+    case 0x97:
+      Serial.print("Default Parking Mode ");
+      Serial.print(d[2], HEX);
+      break;
+
+    case 0x98:
+      Serial.print("Trailer Status ");
+      Serial.print(d[2] == 0x00 ? "NO TRAILER" : "TRAILER ACTIVE");
+      break;
+
+    case 0x99:
+      Serial.print("Unknown (0x99)");
+      break;
+
+    default:
+      Serial.print("Unknown Block");
+      break;
+  }
+
+  Serial.println();
 }
