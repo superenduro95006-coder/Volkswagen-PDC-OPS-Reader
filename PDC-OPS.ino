@@ -50,7 +50,7 @@ RevPhase phase = PHASE_IDLE_0;
 uint32_t phase_start = 0;
 bool frame_sent_in_phase = false;
 
-static const uint32_t PHASE_TIME_MS = 15;
+static const uint32_t PHASE_TIME_MS = 25;
 
 // ---------------- Interrupt ----------------
 volatile bool can_irq = false;
@@ -100,7 +100,7 @@ void setup() {
   Serial.println("OPS Reverse One-Shot Test gestartet");
 
   // Initialer Handshake
-  sendFrame(ID_REQ, 2, req_1282);
+  //sendFrame(ID_REQ, 2, req_1282);
 
   phase_start = millis();
 }
@@ -118,6 +118,7 @@ void loop() {
     // =========================
     byte msg_351[8] = {0x02,0x0,0,0,0,0,0,0};
     CAN.sendMsgBuf(0x351, 0, 7, msg_351);
+    delay(5);
 
     uint16_t raw = 1200 * 4;   // 0.25 rpm/bit
 
@@ -131,6 +132,7 @@ void loop() {
   // msg_280[0] |= 0x01;
 
   CAN.sendMsgBuf(0x280, 0, 8, msg_280);
+  delay(5);
 
     // =========================
     // Zündung / KL15 EIN
@@ -143,6 +145,7 @@ void loop() {
     // =========================
     byte msg_3B0[8] = {0x01,0x00,0x80,0x00,0x00,0x00,0x00,0x00};
     CAN.sendMsgBuf(0x3B0, 0, 8, msg_3B0);
+    delay(5);
 
     // =========================
     // Rückfahrlicht (optional)
@@ -152,7 +155,7 @@ void loop() {
 
 // Getriebe_1 (0x440): Zielgang=1 (R) und Wahl_Pos=1 (R)
 byte msg_440[8] = {0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-CAN.sendMsgBuf(0x440, 0, 8, msg_440);
+//CAN.sendMsgBuf(0x440, 0, 8, msg_440);
     
     static uint8_t gk_counter = 0;
 
@@ -165,6 +168,7 @@ msg_390[5] = (gk_counter & 0x0F);  // GK1_Count_Anhaen
 gk_counter++;
 
 CAN.sendMsgBuf(0x390, 0, 8, msg_390);
+delay(5);
 
 byte msg_572[8] = {0};
 
@@ -177,22 +181,28 @@ msg_572[0] |= 0x02;   // Zündung EIN
 // SG_ Klemme_15_SV : 6|1@1+  -> Byte0 Bit6
 msg_572[0] |= 0x40;   // Klemme 15 EIN
 
-CAN.sendMsgBuf(0x572, 0, 8, msg_572);
+//CAN.sendMsgBuf(0x572, 0, 8, msg_572);
 
 byte msg_570[4] = {0};
 
 // ZAS_Klemme_15 : 1|1@1+  -> Byte0 Bit1
-msg_570[0] |= 0x02;   // KL15 EIN
+msg_570[0] |= 0x03;   // KL15 EIN
 
 CAN.sendMsgBuf(0x570, 0, 4, msg_570);
 
+byte msg_470[5] = {0};
+msg_470[0] |= 0x20;   // Rueckfahrlicht EIN (Bit5)
+msg_470[0] |= 0x04;   // Anhaenger_Kontrollampe EIN (Bit2)
+
+//CAN.sendMsgBuf(0x470, 0, 5, msg_470);
+
 
 // PDC Active State anfordern
-    byte msg_128F[8] = {0x12,0x8F,0x01,0x01,0,0,0,0};
-    CAN.sendMsgBuf(0x67A, 0, 4, msg_128F);
+   // byte msg_128F[8] = {0x12,0x8F,0x01,0x01,0,0,0,0};
+   // CAN.sendMsgBuf(0x67A, 0, 4, msg_128F);
 
 
-    //byte msg_128F[8] = {0x12,0x8F,0,0x10,0,0,0,0};
+    byte msg_128F[8] = {0x12,0x8F,0,0x10,0,0,0,0};
     //CAN.sendMsgBuf(0x67A, 0, 2, msg_128F);
     //sendFrame(ID_REQ, 2, req_1293);
   }
