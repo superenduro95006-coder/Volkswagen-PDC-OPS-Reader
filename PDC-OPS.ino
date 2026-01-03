@@ -39,15 +39,10 @@ uint8_t rev_271[1] = { 0x07};
 // ---------------- State ----------------
 bool sent_81 = false;
 
-// Phasen
-enum RevPhase : uint8_t {
-  PHASE_IDLE_0 = 0,
-  PHASE_351,
-  PHASE_271
-};
 
-RevPhase phase = PHASE_IDLE_0;
-uint32_t phase_start = 0;
+uint32_t phase1_start = 0;
+uint32_t phase2_start = 0;
+uint32_t phase3_start = 0;
 bool frame_sent_in_phase = false;
 
 static const uint32_t PHASE_TIME_MS = 25;
@@ -102,7 +97,9 @@ void setup() {
   // Initialer Handshake
   //sendFrame(ID_REQ, 2, req_1282);
 
-  phase_start = millis();
+  phase1_start = millis();
+  phase2_start = millis();
+  phase3_start = millis();
 }
 
 // ---------------- Loop ----------------
@@ -110,9 +107,33 @@ void loop() {
   uint32_t now = millis();
 
   // -------- Phasenwechsel --------
-  if (now - phase_start >= PHASE_TIME_MS) {
-    phase_start = now;
-    
+  if (now - phase1_start >= 25) {
+    phase1_start = now;  
+
+    byte msg_320[8] = {0,0,0,0,0,0,0,0}; //{0};
+
+// Beispielgeschwindigkeit
+float speed_kmh = 12.0;
+uint16_t raw_speed = (uint16_t)(speed_kmh / 0.32); // = 31
+
+// SG_ Angezeigte_Geschwindigkeit : 46|10@1+
+//
+// Startbit 46:
+//  - Byte5 Bit6–7  -> obere 2 Bits
+//  - Byte6 Bit0–7  -> untere 8 Bits
+
+//msg_320[4] |= 0x01;
+//msg_320[5] |= (raw_speed & 0x03) << 6;   // Bits 0–1 -> Byte5 Bit6–7
+//msg_320[6] |= (raw_speed >> 2) & 0xFF;   // Bits 2–9 -> Byte6
+
+
+    CAN.sendMsgBuf(0x320, 0, 8, msg_320);
+
+  }
+
+if (now - phase2_start >= 100) {
+    phase2_start = now;  
+
 
 
 byte msg_390[8] = {0};
@@ -129,30 +150,20 @@ delay(5);
 byte msg_570[4] = {0};
 
 // ZAS_Klemme_15 : 1|1@1+  -> Byte0 Bit1
-msg_570[0] |= 0x03;   // KL15 EIN
+msg_570[0] |= 0x02;   // KL15 EIN
 
 CAN.sendMsgBuf(0x570, 0, 4, msg_570);
 
 
 
-byte msg_320[8] = {0,0,0,0,0,0,0,0}; //{0};
 
-// Beispielgeschwindigkeit
-float speed_kmh = 2.0;
-uint16_t raw_speed = (uint16_t)(speed_kmh / 0.32); // = 31
+  }
 
-// SG_ Angezeigte_Geschwindigkeit : 46|10@1+
-//
-// Startbit 46:
-//  - Byte5 Bit6–7  -> obere 2 Bits
-//  - Byte6 Bit0–7  -> untere 8 Bits
+  if (now - phase3_start >= 400) {
+    phase3_start = now;  
 
-msg_320[5] |= (raw_speed & 0x03) << 6;   // Bits 0–1 -> Byte5 Bit6–7
-msg_320[6] |= (raw_speed >> 2) & 0xFF;   // Bits 2–9 -> Byte6
-
-
-CAN.sendMsgBuf(0x320, 0, 8, msg_320);
-
+    byte msg_9296[8] = {0x42, 0x96, 0x01, 0x01};
+    sendFrame(ID_REQ, 4, msg_9296);
   }
 
   // -------- RX --------
@@ -164,6 +175,8 @@ CAN.sendMsgBuf(0x320, 0, 8, msg_320);
     uint8_t buf[8];
     CAN.readMsgBuf(&rxId, &len, buf);
 
+    
+    
     if (rxId == ID_RESP) {
       printFrame("RX", rxId, len, buf);
 
