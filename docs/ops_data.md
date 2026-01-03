@@ -109,3 +109,62 @@ Note that for some reason some packet IDs are supplied (12, 13 & 18) but just sk
 
 
 Source: https://www.ttforum.co.uk/threads/rns-e-firmware-now-including-32gb-sdhc-support-for-192.2003957/page-3?nested_view=1
+
+
+```cpp
+// 0x6DA : 42 93 FF FF FF FF 00 00
+	// 0x6DA : 42 92 FF FF FF FF 00 00
+
+	// 0x6DA : XX YY AA BB CC DD 00 00
+	// XX - 42 on 32 off
+
+	// AA - left
+	// BB - left middle
+	// СС - right middle
+	// DD - right
+
+	// YY
+	// Byte 2, bit 0: front/rear
+	// 0 front
+	// 1 rear
+
+	// XX
+	// Byte 1, bit 7: on/off
+	// 0 off
+	// 1 on
+
+	/*
+	 * // Extreme values   left  l-mid r-mid right
+	 * uint8_t fmxd[4] = { 0x55, 0x77, 0x77, 0x55 }; // front max far
+	 * uint8_t fmnd[4] = { 0x0F, 0x0C, 0x0C, 0x0F }; // front max near
+	 * uint8_t rmxd[4] = { 0x55, 0x98, 0x98, 0x55 }; // rear max far
+	 * uint8_t rmnd[4] = { 0x0F, 0x13, 0x13, 0x0F }; // rear max near
+	 *
+	 */
+
+	if (msg[0] == 0x42) {
+
+		carstate.radar.state = e_radar_on;
+
+		if (msg[1] & 0x01) {
+			// rear
+			carstate.radar.rl = 99 - scale(msg[2], 0xf, 0x55, 0, 99);
+			carstate.radar.rlm = 99 - scale(msg[3], 0x13, 0x98, 0, 99);
+			carstate.radar.rrm = 99 - scale(msg[4], 0x13, 0x98, 0, 99);
+			carstate.radar.rr = 99 - scale(msg[5], 0xf, 0x55, 0, 99);
+		} else {
+			// front
+			carstate.radar.fl = 99 - scale(msg[2], 0xf, 0x55, 0, 99);
+			carstate.radar.flm = 99 - scale(msg[3], 0xc, 0x77, 0, 99);
+			carstate.radar.frm = 99 - scale(msg[4], 0xc, 0x77, 0, 99);
+			carstate.radar.fr = 99 - scale(msg[5], 0xf, 0x55, 0, 99);
+		}
+	}
+	else if (msg[0] == 0x32)
+		carstate.radar.state = e_radar_off;
+	else
+		carstate.radar.state = e_radar_off;
+``` 
+
+
+
