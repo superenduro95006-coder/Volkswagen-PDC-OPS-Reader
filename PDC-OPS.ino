@@ -113,75 +113,18 @@ void loop() {
   if (now - phase_start >= PHASE_TIME_MS) {
     phase_start = now;
     
-       // =========================
-    // Reverse eingelegt
-    // =========================
-    byte msg_351[8] = {0x02,0x0,0,0,0,0,0,0};
-    CAN.sendMsgBuf(0x351, 0, 7, msg_351);
-    delay(5);
 
-    uint16_t raw = 1200 * 4;   // 0.25 rpm/bit
-
-  byte msg_280[8] = {0};
-
-  // Motordrehzahl liegt auf Byte2..Byte3
-  msg_280[2] = (byte)(raw & 0xFF);        // LSB
-  msg_280[3] = (byte)((raw >> 8) & 0xFF); // MSB
-
-  // Optional: Leergasinformation (Bit0) setzen, wenn rpm ~ Idle
-  // msg_280[0] |= 0x01;
-
-  CAN.sendMsgBuf(0x280, 0, 8, msg_280);
-  delay(5);
-
-    // =========================
-    // Zündung / KL15 EIN
-    // =========================
-    byte msg_271[8] = {0x1,0,0,0,0,0,0,0};
-    //CAN.sendMsgBuf(0x271, 0, 8, msg_271);
-
-    // =========================
-    // PDC aktiv (Taste / Enable)
-    // =========================
-    byte msg_3B0[8] = {0x01,0x00,0x80,0x00,0x00,0x00,0x00,0x00};
-    CAN.sendMsgBuf(0x3B0, 0, 8, msg_3B0);
-    delay(5);
-
-    // =========================
-    // Rückfahrlicht (optional)
-    // =========================
-    //byte msg_390[8] = {0,0,0,0x16,0,0,0,0};
-    //CAN.sendMsgBuf(0x390, 0, 8, msg_390);
-
-// Getriebe_1 (0x440): Zielgang=1 (R) und Wahl_Pos=1 (R)
-byte msg_440[8] = {0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-//CAN.sendMsgBuf(0x440, 0, 8, msg_440);
-    
-    static uint8_t gk_counter = 0;
 
 byte msg_390[8] = {0};
 
 msg_390[0] = 0x00;          // Kein Anhänger
 msg_390[2] = 0x02;          // GK1_RueckfahrSch = 1 (Bit1)
 msg_390[3] = 0x10;          // GK1_Rueckfahr = 1 (Bit4)
-msg_390[5] = (gk_counter & 0x0F);  // GK1_Count_Anhaen
-gk_counter++;
 
 CAN.sendMsgBuf(0x390, 0, 8, msg_390);
 delay(5);
 
-byte msg_572[8] = {0};
 
-/* Klemme 15 Varianten */
-
-
-// SG_ Klemme_15__Z_ndung_ein_ : 1|1@1+  -> Byte0 Bit1
-msg_572[0] |= 0x02;   // Zündung EIN
-
-// SG_ Klemme_15_SV : 6|1@1+  -> Byte0 Bit6
-msg_572[0] |= 0x40;   // Klemme 15 EIN
-
-//CAN.sendMsgBuf(0x572, 0, 8, msg_572);
 
 byte msg_570[4] = {0};
 
@@ -190,21 +133,26 @@ msg_570[0] |= 0x03;   // KL15 EIN
 
 CAN.sendMsgBuf(0x570, 0, 4, msg_570);
 
-byte msg_470[5] = {0};
-msg_470[0] |= 0x20;   // Rueckfahrlicht EIN (Bit5)
-msg_470[0] |= 0x04;   // Anhaenger_Kontrollampe EIN (Bit2)
-
-//CAN.sendMsgBuf(0x470, 0, 5, msg_470);
 
 
-// PDC Active State anfordern
-   // byte msg_128F[8] = {0x12,0x8F,0x01,0x01,0,0,0,0};
-   // CAN.sendMsgBuf(0x67A, 0, 4, msg_128F);
+byte msg_320[8] = {0,0,0,0,0,0,0,0}; //{0};
+
+// Beispielgeschwindigkeit
+float speed_kmh = 2.0;
+uint16_t raw_speed = (uint16_t)(speed_kmh / 0.32); // = 31
+
+// SG_ Angezeigte_Geschwindigkeit : 46|10@1+
+//
+// Startbit 46:
+//  - Byte5 Bit6–7  -> obere 2 Bits
+//  - Byte6 Bit0–7  -> untere 8 Bits
+
+msg_320[5] |= (raw_speed & 0x03) << 6;   // Bits 0–1 -> Byte5 Bit6–7
+msg_320[6] |= (raw_speed >> 2) & 0xFF;   // Bits 2–9 -> Byte6
 
 
-    byte msg_128F[8] = {0x12,0x8F,0,0x10,0,0,0,0};
-    //CAN.sendMsgBuf(0x67A, 0, 2, msg_128F);
-    //sendFrame(ID_REQ, 2, req_1293);
+CAN.sendMsgBuf(0x320, 0, 8, msg_320);
+
   }
 
   // -------- RX --------
