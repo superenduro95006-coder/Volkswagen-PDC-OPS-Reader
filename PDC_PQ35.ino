@@ -15,14 +15,15 @@ static const uint32_t ID_PDC_DIST = 0x054B;
 static const uint32_t ID_PDC_STAT = 0x0545;
 
 
-static const uint32_t ID_REVERSE_AND_SPEED_DATA = 0x351; //ggf: BO_ 1136 mBSG_Kombi: 8 Gateway_PQ35
-static const uint32_t ID_IGNITION_DATA = 0x575;
+//ggf: BO_ 1136 mBSG_Kombi: 8 Gateway_PQ35
+static const uint32_t ID_REVERSE_AND_SPEED_DATA = 0x351; 
+static const uint32_t ID_IGNITION_DATA = 0x575; 
 
 
 
 // ---------------- Requests ----------------
-uint8_t msg_351[8] = {0x20,0,0,0,0,0,0,0};
-uint8_t msg_575[4] = {0x20,0,0,0};
+uint8_t msg_351[8] = {0x20,0,0,0,0,0,0,0}; // GW1_Rueckfahrlicht : 1|1 → Byte0 Bit1 = 1 ⇒ Byte0 = 0x02 & GW1_FzgGeschw : 9|15 (0.01) → 0 km/h ⇒ raw = 0 ⇒ Byte1/Byte2 = 0x00 0x00
+uint8_t msg_575[4] = {0x20,0,0,0}; // Byte0 (Bits 0–7) - Bit1 BS3_Klemme_15
 
 
 // ---------------- State ----------------
@@ -98,7 +99,7 @@ void loop() {
 if (now - phase2_start >= 100) {
     phase2_start = now;  
     sendFrame(ID_REVERSE_AND_SPEED_DATA, 8, msg_351);
-    sendFrame(ID_IGNITION_DATA, 8, msg_575);
+    sendFrame(ID_IGNITION_DATA, 4, msg_575);
   }
   // -------- RX --------
   if (can_irq) can_irq = false;
