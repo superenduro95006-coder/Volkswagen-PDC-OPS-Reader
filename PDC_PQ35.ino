@@ -17,6 +17,7 @@ static const uint32_t ID_PDC_STAT = 0x0545;
 
 //ggf: BO_ 1136 mBSG_Kombi: 8 Gateway_PQ35
 static const uint32_t ID_REVERSE_AND_SPEED_DATA = 0x351; 
+//maybe 0x271 - Byte0 bit1 
 static const uint32_t ID_IGNITION_DATA = 0x575; 
 
 
