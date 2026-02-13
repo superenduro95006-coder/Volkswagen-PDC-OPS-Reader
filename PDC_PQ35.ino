@@ -15,6 +15,7 @@ static const uint32_t ID_PDC_DIST = 0x054B;
 static const uint32_t ID_PDC_STAT = 0x0545;
 
 
+
 //ggf: BO_ 1136 mBSG_Kombi: 8 Gateway_PQ35
 static const uint32_t ID_REVERSE_AND_SPEED_DATA = 0x351; 
 //maybe 0x271 - Byte0 bit1 
@@ -25,6 +26,24 @@ static const uint32_t ID_IGNITION_DATA = 0x575;
 // ---------------- Requests ----------------
 uint8_t msg_351[8] = {0x20,0,0,0,0,0,0,0}; // GW1_Rueckfahrlicht : 1|1 → Byte0 Bit1 = 1 ⇒ Byte0 = 0x02 & GW1_FzgGeschw : 9|15 (0.01) → 0 km/h ⇒ raw = 0 ⇒ Byte1/Byte2 = 0x00 0x00
 uint8_t msg_575[4] = {0x20,0,0,0}; // Byte0 (Bits 0–7) - Bit1 BS3_Klemme_15
+uint8_t msg_0x470[8] = { //rueckfahrlich
+    0x20, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+uint8_t msg_0x531[4] = { //rueckfahrlich
+    0x20, 0x00, 0x00, 0x00
+};
+uint8_t msg_0x575[4] = { 0x02, 0x00, 0x00, 0x00 }; //Klemme 15
+uint8_t msg_0x440[8] = { //rueckwaertsgang
+    0x00, 0x07, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+uint8_t msg_0x390[8] = { //rueckfahr
+    0x00, 0x00, 0x02, 0x10,
+    0x00, 0x00, 0x00, 0x00
+};
+
+
 
 
 // ---------------- State ----------------
@@ -129,7 +148,7 @@ static inline uint8_t getBits(const byte* d, uint8_t byteIndex, uint8_t lsbBit, 
 
 void decodeData (uint32_t id, uint8_t len,  uint8_t *d){
    
-  if (id == ID_PDC_RESPONSE && len >= 8) {
+  if (id == ID_PDC_DIST && len >= 8) {
     
   Serial.println("==== mParkhilfe_5 ====");
 
